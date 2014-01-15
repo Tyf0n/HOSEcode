@@ -272,9 +272,10 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 	 */
 	public String getHOSECode(IAtomContainer ac, IAtom root, int noOfSpheres, boolean ringsize) throws CDKException
 	{
+		ac = getPartialMol(ac, root, noOfSpheres + 1);
 		ensureIsotopeFactory(ac.getBuilder());
-    CanonicalLabeler canLabler = new CanonicalLabeler();
-    canLabler.canonLabel(ac);
+		CanonicalLabeler canLabler = new CanonicalLabeler();
+		canLabler.canonLabel(ac);
 		centerCode = "";
 		this.atomContainer = ac;
 		maxSphere = noOfSpheres;
@@ -301,6 +302,77 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 		fillUpSphereDelimiters();
 		logger.debug("HOSECodeGenerator -> HOSECode: ", HOSECode);
 		return HOSECode.toString();
+	}
+	
+	private IAtomContainer getPartialMol(IAtomContainer ac, IAtom root, int noOfSpheres)
+	{
+	
+		int i, j, aCount;
+		IAtomContainer partialMol = new AtomContainer();
+		IAtom a = null;
+		IBond b = null;
+		
+		aCount = 1;
+		partialMol.addAtom(root);
+		List <IAtom> as = ac.getConnectedAtomsList(root);
+		for (i = 0; i < noOfSpheres - 1; i++)
+		{
+		
+			as = BFS(aCount, ac, partialMol, as, false);
+		
+		}
+		BFS(aCount, ac, partialMol, as, true);
+		
+		return partialMol;
+	
+	}
+	
+	private List <IAtom> BFS(int aCount, IAtomContainer ac, IAtomContainer partialMol, List <IAtom> as, boolean end)
+	{
+	
+		List <IAtom> nextSphere = null;
+		List <IAtom> conAtoms = null;
+		int i, j;
+		IAtom a1 = null;
+		IAtom a2 = null;
+		IBond b = null;
+		aCount = as.size();
+		if (end)
+		{
+		
+			for (i = 0; i < aCount; i++)
+			{
+			
+				if (as.get(i).getSymbol().equals("H")) {continue;}
+				as.get(i).setSymbol("@");
+			
+			}
+		
+		}
+		i = 0;
+		while (aCount > i)
+		{
+		
+			a1 = as.get(i);
+			j = nextSphere.indexOf(a1);
+			if (j != -1) {nextSphere.remove(j);}
+			partialMol.addAtom(a1);
+			conAtoms = ac.getConnectedAtomsList(a1);
+			for (j = 0; j < conAtoms.size(); j++)
+			{
+			
+				a2 = conAtoms.get(j);
+				if (partialMol.contains(a2)) {partialMol.addBond(ac.getBond(a1, a2));}
+				else {nextSphere.add(a2);}
+			
+			}
+			
+			i++;
+		
+		}
+		
+		return nextSphere;
+	
 	}
 
 	private void createCenterCode(IAtom root, IAtomContainer ac, boolean ringsize)

@@ -246,7 +246,7 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 	 * @exception  org.openscience.cdk.exception.CDKException  Thrown if something is wrong
 	 */
   @TestMethod("test4,test4Sphere,testBug655169")
-	public String getHOSECode(IAtomContainer ac, IAtom root, int noOfSpheres) throws CDKException
+	public String getHOSECode(IAtomContainer ac, IAtom root, int noOfSpheres) throws Exception
 	{
 		return getHOSECode(ac,root,noOfSpheres, false);
 	}
@@ -270,9 +270,11 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 	 * @return The HOSECode value
 	 * @exception  org.openscience.cdk.exception.CDKException  Thrown if something is wrong
 	 */
-	public String getHOSECode(IAtomContainer ac, IAtom root, int noOfSpheres, boolean ringsize) throws CDKException
+	public String getHOSECode(IAtomContainer ac, IAtom root, int noOfSpheres, boolean ringsize) throws Exception
 	{
-		ac = getPartialMol(ac, root, noOfSpheres + 1);
+		int i = ac.getAtomNumber(root);
+		ac = ac.clone();root = ac.getAtom(i);noOfSpheres++;
+		ac = getPartialMol(ac, root, noOfSpheres);
 		ensureIsotopeFactory(ac.getBuilder());
 		CanonicalLabeler canLabler = new CanonicalLabeler();
 		canLabler.canonLabel(ac);
@@ -281,7 +283,7 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 		maxSphere = noOfSpheres;
 		spheres = new List[noOfSpheres + 1];
 		spherePosi = new int [ac.getAtomCount()];///
-		for (int i = 0; i < ac.getAtomCount(); i++)
+		for (i = 0; i < ac.getAtomCount(); i++)
 		{
 			ac.getAtom(i).setFlag(CDKConstants.VISITED, false);
 			spherePosi[i] = -10;///
@@ -314,7 +316,7 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 		
 		aCount = 1;
 		partialMol.addAtom(root);
-		List <IAtom> as = ac.getConnectedAtomsList(root);
+		List <IAtom> as = ac.getConnectedAtomsList(root);//System.out.println(as.size() + "*");
 		for (i = 0; i < noOfSpheres - 1; i++)
 		{
 		
@@ -322,6 +324,7 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 		
 		}
 		BFS(aCount, ac, partialMol, as, true);
+//		System.out.println(partialMol.toString());
 		
 		return partialMol;
 	
@@ -330,13 +333,16 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 	private List <IAtom> BFS(int aCount, IAtomContainer ac, IAtomContainer partialMol, List <IAtom> as, boolean end)
 	{
 	
-		List <IAtom> nextSphere = null;
-		List <IAtom> conAtoms = null;
 		int i, j;
 		IAtom a1 = null;
 		IAtom a2 = null;
 		IBond b = null;
-		aCount = as.size();
+		
+		List <IAtom> nextSphere = ac.getConnectedAtomsList(ac.getAtom(0));//initialize a List
+		nextSphere.clear();
+		aCount = as.size();//System.out.println(as.size() + "#");
+		if (aCount == 0) {return nextSphere;}
+		
 		if (end)
 		{
 		
@@ -344,7 +350,7 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 			{
 			
 				if (as.get(i).getSymbol().equals("H")) {continue;}
-				as.get(i).setSymbol("@");
+				as.get(i).setSymbol("He");//as.get(i).setSymbol("@");
 			
 			}
 		
@@ -357,12 +363,20 @@ public class HOSECodeGenerator12282013 implements java.io.Serializable
 			j = nextSphere.indexOf(a1);
 			if (j != -1) {nextSphere.remove(j);}
 			partialMol.addAtom(a1);
-			conAtoms = ac.getConnectedAtomsList(a1);
+			List <IAtom> conAtoms = ac.getConnectedAtomsList(a1);
 			for (j = 0; j < conAtoms.size(); j++)
 			{
 			
 				a2 = conAtoms.get(j);
-				if (partialMol.contains(a2)) {partialMol.addBond(ac.getBond(a1, a2));}
+				if (partialMol.contains(a2))
+				{
+				
+					b = ac.getBond(a1, a2);
+					if (partialMol.contains(b)) {continue;}
+					
+					partialMol.addBond(b);
+				
+				}
 				else {nextSphere.add(a2);}
 			
 			}
